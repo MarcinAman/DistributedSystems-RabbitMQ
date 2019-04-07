@@ -10,19 +10,22 @@ import (
 	"time"
 )
 
-func consume(msg []byte, channel *amqp.Channel)(){
+func consume(msg []byte, channel *amqp.Channel) {
 	time.Sleep(2 * time.Second)
 
 	msgUnmarshalled := model.Message{}
 	err := json.Unmarshal(msg, &msgUnmarshalled)
 
-	util.FailOnError(err, "failed to unmarshall message: " + string(msg))
+	if err != nil {
+		println("message = " + string(msg))
+	} else {
+		util.FailOnError(err, "failed to unmarshal message: "+string(msg))
 
-	println("Finished handling message : " + string(msg))
-	body := msgUnmarshalled.Name + ", " + msgUnmarshalled.Injury + ", DONE"
-	util.PublishToQueue(channel, []byte(body), "app.doctor."+msgUnmarshalled.DocId)
+		println("Finished handling message : " + string(msg))
+		body := msgUnmarshalled.Name + ", " + msgUnmarshalled.Injury + ", DONE"
+		util.PublishToQueue(channel, []byte(body), "app.doctor."+msgUnmarshalled.DocId)
+	}
 }
-
 
 func main() {
 	println("Started with parameters: " + os.Args[1] + ", " + os.Args[2])
@@ -33,6 +36,9 @@ func main() {
 	ch, err := conn.Channel()
 	util.FailOnError(err, "Failed to open a channel")
 	defer ch.Close()
+
+	//qosErr := ch.Qos(1, 0, false)
+	//util.FailOnError(qosErr, "Failed to set prefered batch to 1")
 
 	util.CreateExchange(constants.ExchangeName, ch)
 
@@ -45,27 +51,27 @@ func main() {
 	util.BindQueue(hipQueue, ch, constants.HipRoutingKey, constants.ExchangeName)
 
 	msgs1, err := ch.Consume(
-		os.Args[1], 		// queue
-		"",     	// consumer
-		false,  	// auto-ack
-		false, 	// exclusive
-		false,  	// no-local
-		false,  	// no-wait
-		nil,    		// args
+		os.Args[1], // queue
+		"",         // consumer
+		false,      // auto-ack
+		false,      // exclusive
+		false,      // no-local
+		false,      // no-wait
+		nil,        // args
 	)
-	util.FailOnError(err, "Failed to register a consumer on " + os.Args[1])
+	util.FailOnError(err, "Failed to register a consumer on "+os.Args[1])
 
 	msgs2, err := ch.Consume(
-		os.Args[2], 		// queue
-		"",     	// consumer
-		false,  	// auto-ack
-		false, 	// exclusive
-		false,  	// no-local
-		false,  	// no-wait
-		nil,    		// args
+		os.Args[2], // queue
+		"",         // consumer
+		false,      // auto-ack
+		false,      // exclusive
+		false,      // no-local
+		false,      // no-wait
+		nil,        // args
 	)
 
-	util.FailOnError(err, "Failed to register a consumer on " + os.Args[2])
+	util.FailOnError(err, "Failed to register a consumer on "+os.Args[2])
 
 	forever := make(chan bool)
 	go func() {
@@ -78,5 +84,5 @@ func main() {
 			}
 		}
 	}()
-	<- forever
+	<-forever
 }

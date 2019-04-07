@@ -12,7 +12,7 @@ import (
 /*
 1. Check if app.logging exists
 2. Randomly send topic requests to exchange
- */
+*/
 
 func main() {
 	conn, err := amqp.Dial(constants.MqUrl)
@@ -26,15 +26,16 @@ func main() {
 	util.CreateExchange(constants.ExchangeName, ch)
 
 	q := util.CreateQueue(constants.AdminLoggingQueue, ch)
+	util.BindQueue(q, ch, constants.AdminRoutingKey, constants.ExchangeName)
 
 	msgs, err := ch.Consume(
-		q.Name, 			// queue
-		"",     	// consumer
-		true,   	// auto-ack
-		false,  	// exclusive
-		false,  	// no-local
-		false,  	// no-wait
-		nil,    		// args
+		q.Name, // queue
+		"",     // consumer
+		true,   // auto-ack
+		false,  // exclusive
+		false,  // no-local
+		false,  // no-wait
+		nil,    // args
 	)
 	util.FailOnError(err, "Failed to register a consumer")
 
@@ -42,21 +43,19 @@ func main() {
 
 	go func() {
 		for d := range msgs {
-			log.Printf("[%s] Received a message: %s", time.Now().String() ,d.Body)
+			log.Printf("[%s] Received a message: %s", time.Now().String(), d.Body)
 		}
 	}()
 
 	go func() {
 		for {
-			time.Sleep(30 * time.Second)
+			println("Publishing to all queues")
+			time.Sleep(10 * time.Second)
 
 			body, _ := json.Marshal("info message")
 			util.PublishToQueue(ch, body, constants.AdminRoutingKey)
 		}
 	}()
-
-	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 	<-forever
-
 
 }

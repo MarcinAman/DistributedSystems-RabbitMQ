@@ -16,10 +16,10 @@ import (
 2. Check if app.doctor.requests is alive, if not create it
 3. Randomly send requests to exchange
 4. Process responses from app.doctor.doctor_name
- */
+*/
 
-func sendMessagesToTechnicians(channel *amqp.Channel, docId string)() {
-	injuries := [...]string{"knee","elbow","hip"}
+func sendMessagesToTechnicians(channel *amqp.Channel, docId string) {
+	injuries := [...]string{"knee", "elbow", "hip"}
 	names := [...]string{"john", "mark", "ed"}
 
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -28,23 +28,26 @@ func sendMessagesToTechnicians(channel *amqp.Channel, docId string)() {
 		index := rand.Intn(3)
 		message := model.Message{
 			Injury: injuries[index],
-			Name: names[index],
-			DocId: docId}
+			Name:   names[index],
+			DocId:  docId}
 
 		util.PublishMessageToQueue(channel, message, routingKeyFromInjury(injuries[index]))
 
-		marshaled,_ := json.Marshal(message)
+		marshaled, _ := json.Marshal(message)
 
 		println("Message send: " + string(marshaled))
-		time.Sleep(9 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
 }
 
 func routingKeyFromInjury(injury string) string {
 	switch injury {
-	case "knee": return constants.KneeRoutingKey
-	case "hip": return constants.HipRoutingKey
-	case "elbow": return constants.ElbowRoutingKey
+	case "knee":
+		return constants.KneeRoutingKey
+	case "hip":
+		return constants.HipRoutingKey
+	case "elbow":
+		return constants.ElbowRoutingKey
 	default:
 		return constants.KneeRoutingKey
 	}
@@ -69,25 +72,24 @@ func main() {
 	util.BindQueue(queue, ch, routingKey, constants.ExchangeName)
 
 	msgs, err := ch.Consume(
-		queue.Name, 		// queue
-		"",     	// consumer
-		false,  	// auto-ack
-		false, 	// exclusive
-		false,  	// no-local
-		false,  	// no-wait
-		nil,    		// args
+		queue.Name, // queue
+		"",         // consumer
+		false,      // auto-ack
+		false,      // exclusive
+		false,      // no-local
+		false,      // no-wait
+		nil,        // args
 	)
 	util.FailOnError(err, "Failed to register a consumer")
 
 	forever := make(chan bool)
 	go func() {
 		for d := range msgs {
-			println( "["+time.Now().String() + "]Received message: " + string(d.Body))
+			println("[" + time.Now().String() + "]Received message: " + string(d.Body))
 		}
 	}()
 
 	go sendMessagesToTechnicians(ch, queueName)
-	<- forever
-
+	<-forever
 
 }
