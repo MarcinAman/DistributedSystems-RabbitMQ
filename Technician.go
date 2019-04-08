@@ -17,11 +17,11 @@ func consume(msg []byte, channel *amqp.Channel) {
 	err := json.Unmarshal(msg, &msgUnmarshalled)
 
 	if err != nil {
-		println("message = " + string(msg))
+		println("[" + time.Now().String() + "]Received message: " + string(msg))
 	} else {
 		util.FailOnError(err, "failed to unmarshal message: "+string(msg))
 
-		println("Finished handling message : " + string(msg))
+		println("[" + time.Now().String() + "]Finished handling message : " + string(msg))
 		body := msgUnmarshalled.Name + ", " + msgUnmarshalled.Injury + ", DONE"
 		util.PublishToQueue(channel, []byte(body), "app.doctor."+msgUnmarshalled.DocId)
 	}
@@ -41,6 +41,7 @@ func main() {
 	//util.FailOnError(qosErr, "Failed to set prefered batch to 1")
 
 	util.CreateExchange(constants.ExchangeName, ch)
+	util.CreateLoggingExchange(constants.LoggingExchangeName, ch)
 
 	elbowQueue := util.CreateQueue("elbow", ch)
 	kneeQueue := util.CreateQueue("knee", ch)
@@ -49,6 +50,10 @@ func main() {
 	util.BindQueue(elbowQueue, ch, constants.ElbowRoutingKey, constants.ExchangeName)
 	util.BindQueue(kneeQueue, ch, constants.KneeRoutingKey, constants.ExchangeName)
 	util.BindQueue(hipQueue, ch, constants.HipRoutingKey, constants.ExchangeName)
+
+	util.BindQueue(elbowQueue, ch, constants.ElbowRoutingKey, constants.LoggingExchangeName)
+	util.BindQueue(kneeQueue, ch, constants.KneeRoutingKey, constants.LoggingExchangeName)
+	util.BindQueue(hipQueue, ch, constants.HipRoutingKey, constants.LoggingExchangeName)
 
 	msgs1, err := ch.Consume(
 		os.Args[1], // queue

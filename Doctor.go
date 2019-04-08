@@ -63,6 +63,7 @@ func main() {
 	defer ch.Close()
 
 	util.CreateExchange(constants.ExchangeName, ch)
+	util.CreateLoggingExchange(constants.LoggingExchangeName, ch)
 
 	queueName := os.Args[1]
 
@@ -70,6 +71,7 @@ func main() {
 
 	routingKey := "app.doctor." + os.Args[1]
 	util.BindQueue(queue, ch, routingKey, constants.ExchangeName)
+	util.BindQueue(queue, ch, routingKey, constants.LoggingExchangeName)
 
 	msgs, err := ch.Consume(
 		queue.Name, // queue

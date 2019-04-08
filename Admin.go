@@ -24,9 +24,11 @@ func main() {
 	defer ch.Close()
 
 	util.CreateExchange(constants.ExchangeName, ch)
+	util.CreateLoggingExchange(constants.LoggingExchangeName, ch)
 
 	q := util.CreateQueue(constants.AdminLoggingQueue, ch)
 	util.BindQueue(q, ch, constants.AdminRoutingKey, constants.ExchangeName)
+	util.BindQueue(q, ch, constants.AdminRoutingKey, constants.LoggingExchangeName)
 
 	msgs, err := ch.Consume(
 		q.Name, // queue
@@ -49,11 +51,11 @@ func main() {
 
 	go func() {
 		for {
-			println("Publishing to all queues")
 			time.Sleep(10 * time.Second)
+			println("[" + time.Now().String() + "]Publishing to all queues")
 
 			body, _ := json.Marshal("info message")
-			util.PublishToQueue(ch, body, constants.AdminRoutingKey)
+			util.PublishToExchange(ch, body, "", constants.LoggingExchangeName)
 		}
 	}()
 	<-forever
